@@ -4,73 +4,97 @@ import yfinance as yf
 
 # List of top 100 crypto coins
 coins = [
-    "BTC-USD", "ETH-USD", "BNB-USD", "XRP-USD", "ADA-USD", "DOGE-USD", "MATIC-USD", "SOL-USD", "DOT-USD", "LTC-USD",
-    "TRX-USD", "AVAX-USD", "SHIB-USD", "UNI-USD", "LINK-USD", "ATOM-USD", "XMR-USD", "ETC-USD", "XLM-USD", "BCH-USD",
-    "APT-USD", "LDO-USD", "QNT-USD", "NEAR-USD", "ARB-USD", "VET-USD", "FIL-USD", "ICP-USD", "HBAR-USD", "EOS-USD",
-    "MKR-USD", "ALGO-USD", "SAND-USD", "AAVE-USD", "EGLD-USD", "THETA-USD", "XTZ-USD", "IMX-USD", "AXS-USD", "RUNE-USD",
-    "FLOW-USD", "MANA-USD", "GRT-USD", "KCS-USD", "ZEC-USD", "FTM-USD", "ENJ-USD", "KAVA-USD", "CRV-USD", "SNX-USD",
-    "GALA-USD", "1INCH-USD", "COMP-USD", "RPL-USD", "CHZ-USD", "FXS-USD", "CAKE-USD", "LRC-USD", "HOT-USD", "WAVES-USD",
-    "TWT-USD", "NEXO-USD", "BAL-USD", "CELO-USD", "YFI-USD", "ZRX-USD", "CVX-USD", "ICX-USD", "ONT-USD", "SRM-USD",
-    "BNT-USD", "SUSHI-USD", "ANKR-USD", "XVS-USD", "DGB-USD", "WAXP-USD", "IOST-USD", "RVN-USD", "KEEP-USD", "DODO-USD",
-    "MTL-USD", "STMX-USD", "REEF-USD", "COTI-USD", "ALPHA-USD", "KMD-USD", "CVC-USD", "OXT-USD", "BAND-USD", "OGN-USD",
-    "LSK-USD", "STORJ-USD", "REN-USD", "LPT-USD", "CELR-USD", "ARDR-USD", "CTSI-USD", "BTS-USD", "ZEN-USD", "REP-USD"
+    "BTC", "ETH", "BNB", "XRP", "ADA", "DOGE", "MATIC", "SOL", "DOT", "LTC",
+    "TRX", "AVAX", "SHIB", "UNI", "LINK", "ATOM", "XMR", "ETC", "XLM", "BCH",
+    "APT", "LDO", "QNT", "NEAR", "ARB", "VET", "FIL", "ICP", "HBAR", "EOS",
+    "MKR", "ALGO", "SAND", "AAVE", "EGLD", "THETA", "XTZ", "IMX", "AXS", "RUNE",
+    "FLOW", "MANA", "GRT", "KCS", "ZEC", "FTM", "ENJ", "KAVA", "CRV", "SNX",
+    "GALA", "1INCH", "COMP", "RPL", "CHZ", "FXS", "CAKE", "LRC", "HOT", "WAVES",
+    "TWT", "NEXO", "BAL", "CELO", "YFI", "ZRX", "CVX", "ICX", "ONT", "SRM",
+    "BNT", "SUSHI", "ANKR", "XVS", "DGB", "WAXP", "IOST", "RVN", "KEEP", "DODO",
+    "MTL", "STMX", "REEF", "COTI", "ALPHA", "KMD", "CVC", "OXT", "BAND", "OGN",
+    "LSK", "STORJ", "REN", "LPT", "CELR", "ARDR", "CTSI", "BTS", "ZEN", "REP"
 ]
 
 class CoinResult:
-    def __init__(self, ticker="n/a", wallet=0, coins=0, single_grid_width=0, lower_price=0, upper_price=0, xxx=0):
+    def __init__(self, ticker="n/a", fiat_wallet=0, coins=0.0, single_grid_width=0, lower_price=0, upper_price=0, current_price=0, bot_value=0):
         self.ticker = ticker
-        self.wallet = wallet
+        self.fiat_wallet = fiat_wallet
         self.coins = coins
         self.single_grid_width = single_grid_width
         self.lower_price = lower_price
         self.upper_price = upper_price
-        self.xxx = xxx
+        self.current_price = current_price
+        self.bot_value = bot_value
 
 
 
-def analyze_crypto(ticker, period="1mo", interval="5m", grids=66):
-    data = yf.download(ticker, period=period, interval=interval)
+def analyze_crypto(symbol, period="1mo", interval="5m", grids=66, fiat_wallet=10000):
+
+    data = yf.download(f"{symbol}-USD", period=period, interval=interval)
     if data.empty:
         return CoinResult()
-        
+
+
 
     lower_price = data['Low'].min()
     upper_price = data['High'].max()
-    single_grid_width = (upper_price - lower_price) / grids
+    single_grid_width = (upper_price - lower_price) / grids 
 
     sell_orders = []
-    wallet = 10000  # initial amount of money
-    coins = 0  # initial amount of coins
+    coin_amount = 0  # initial amount of coins
+    bot_value = 0.0
+    single_trade_amount = fiat_wallet / (grids - 1)
+
 
     prev_grid = None
-    for close in data['Close']:
-        current_grid = int((close - lower_price) / single_grid_width)
+    sell_orders = []
 
-        if prev_grid is not None and current_grid > prev_grid:
-            # sell operation
-            sell_orders = [order for order in sell_orders if order['grid'] != current_grid]
-            for order in sell_orders:
-                wallet += order['amount'] * close
-                coins -= order['amount']
+    min = 0
+    for close in data['Close']:
+        min += 1
+        current_grid = int((upper_price - close) / single_grid_width)
+
+        # print(f"Price at {min}: {close}       Current grid: {current_grid}   Previous grid: {prev_grid}")
+
 
         if prev_grid is None or current_grid < prev_grid:
             # buy operation
-            print(f"grids - current_grid")
-            amount = wallet / (grids - current_grid)
-            wallet -= amount
-            coins += amount / close
-            sell_orders.append({'grid': current_grid + 1, 'amount': amount / close})
+            amount = single_trade_amount / close
+            # print(f"==> Buy {symbol} at price {close} (= {amount}) - Grid {current_grid}  (Sell in Grid {current_grid+1} for {close + single_trade_amount})  ")
+            fiat_wallet -= single_trade_amount
+            coin_amount += amount
+            sell_orders.append({'price': close + single_trade_amount, 'grid': current_grid + 1, 'amount': amount})
+
+        sell_orders_in_current_grid = [order for order in sell_orders if order['grid'] == current_grid] 
+        # print(f"Sell orders in current grid: {len(sell_orders_in_current_grid)}")
+
+        current_sell_orders = [order for order in  sell_orders_in_current_grid if order['price'] >= close]
+        # print(f"Current sell orders count: {current_sell_orders.count}")
+
+        for order in current_sell_orders:
+            fiat_wallet = fiat_wallet + order['amount'] * close
+            coin_amount = coin_amount - order['amount']
+            # print(f"<:::::::> Sell {symbol} at price {close} (= {order['amount']}) - Current {current_grid}  ")
+            sell_orders.remove(order)
 
         prev_grid = current_grid
+    
+    last_price = data['Close'].iloc[-1]
+    bot_value = fiat_wallet + coin_amount * last_price
 
-    return ticker, wallet, coins, single_grid_width, lower_price, upper_price, data['Close'].iloc[-1]
-
+    return CoinResult(symbol, fiat_wallet, coin_amount, single_grid_width, lower_price, upper_price, last_price, bot_value)
 
 
 def xround(value):
+    """ Rounds the value and determins the amount of decimals according to the value. """
     decimals = 10
     value = abs(value)
-    if value >= 1:
+    if value >= 10000:
+        decimals = 0
+    elif value >= 1000:
+        decimals = 1
+    elif value >= 1:
         decimals = 2
     elif value >= 0.1:
         decimals = 3
@@ -140,39 +164,33 @@ if st.button("Analyze"):
 
     for index, coin in enumerate(coins[:TOP_N]):
         spinner_placeholder.markdown(f"Analyzing {index} of {TOP_N}: **{coin}**")
-        (ticker, wallet, coins, single_grid_width, lower_price, upper_price, xxx) = analyze_crypto(coin, period=PERIOD, interval=INTERVAL,grids=NUMBER_OF_GRIDS)
-        results.append((ticker, wallet, coins, single_grid_width, lower_price, upper_price, xxx ))
+        coin_result = analyze_crypto(coin, period=PERIOD, interval=INTERVAL,grids=NUMBER_OF_GRIDS)
+        results.append(coin_result)
 
+    # sort the results array by coin_result.fiat_wallet
     spinner_placeholder.empty()  # Remove the spinner
     spinner_placeholder.success(f'All {TOP_N} coins analysed!')
     # Sort results by "UP" in descending order
     sorted_results = results #  sorted(results, key=lambda x: x[1], reverse=True)
+    sorted_results = sorted(results, key=lambda x: x.bot_value, reverse=True)
 
-    cols = st.columns(7)
+    cols = st.columns(8)
 
-    for index, headline in enumerate(("ticker", "wallet", "coins", "single_grid_width", "min Price", "max Price", "Last Price" )):
+    for index, headline in enumerate(("Coin", "Fiat", "Coins", "Grid Price", "min Price", "max Price", "Last Price", "Bot Value" )):
         cols[index].markdown(f"**{headline}**")
 
-    for result in sorted_results[:AMOUNT_OF_RESULTS]:
-        for index, xresult in enumerate(result):
-            if index == 0:
-                cols[index].markdown(f"**{xresult}**")  
-            else:
-                cols[index].markdown(f"{xround(xresult)}")
-
+    for result in sorted_results:
+        cols[0].markdown(f'<a href="https://www.tradingview.com/symbols/{result.ticker}USDT/" target="_blank">{result.ticker}</a>', unsafe_allow_html=True)
+        # cols[0].markdown(f"**{result.ticker}**")
+        cols[1].markdown(f"{xround(result.fiat_wallet)}")
+        cols[2].markdown(f"{xround(result.coins)}")
+        cols[3].markdown(f"${xround(result.single_grid_width)}") 
+        cols[4].markdown(f"{xround(result.lower_price)}")
+        cols[5].markdown(f"{xround(result.upper_price)}")
+        cols[6].markdown(f"{xround(result.current_price)}")
+        cols[7].markdown(f"${xround(result.bot_value)}")
 
     exit()
-
-    # for index, coin in enumerate(coins[:TOP_N]):
-    #     spinner_placeholder.markdown(f"Analyzing {index} of {TOP_N}: **{coin}**")
-    #     (up, down, grid_step, min_price, max_price, last_close) = analyze_crypto(coin, period=PERIOD, interval=INTERVAL,grids=NUMBER_OF_GRIDS)
-    #     results.append((coin, up, down, grid_step, min_price, max_price, last_close ))
-
-    # spinner_placeholder.empty()  # Remove the spinner
-    # spinner_placeholder.success(f'All {TOP_N} coins analysed!')
-    # # Sort results by "UP" in descending order
-    # sorted_results = sorted(results, key=lambda x: x[1], reverse=True)
-
 
     cols = st.columns(7)
     cols[0].markdown("**Coin**")
@@ -180,60 +198,16 @@ if st.button("Analyze"):
     cols[2].markdown("**DOWN**")
     cols[3].markdown("**Step**")
     cols[4].markdown("**Min**")
-    cols[5].markdown("**Max**")
+    cols[5].markdown("**Max**") 
     cols[6].markdown("**Last**")
 
 
-    for result in sorted_results[:AMOUNT_OF_RESULTS]:
+    for result in sorted_results[:AMOUNT_OF_RESULTS]: 
         # loop through col and result 
-        cols[0].write(f"{result[0]}")
+        cols[0].markdown(f'<a href="https://www.tradingview.com/symbols/{result[0]}USDT/">XXX https://www.tradingview.com/symbols/{result[0]}USDT/ {result[0]}</a>', unsafe_allow_html=True)
         cols[1].write(f"{result[1]}")
         cols[2].write(f"{result[2]}")
         cols[3].write(f"{xround(result[3])}")
         cols[4].write(f"{xround(result[4])}")
         cols[5].write(f"{xround(result[5])}")
         cols[6].write(f"{xround(result[6])}")
-
-
-
-def analyze_crypto_old(ticker, period="1mo", interval="5m", grids=66):
-    """  Analyze the crypto data and counts the amount of changes up and down in the grid """
-    # Fetch historical data
-    data = yf.download(ticker, period=period, interval=interval)
-    
-    # Check if data is returned
-    if data.empty:
-        return 0,0,0, 0, 0, 0
-
-    # Get the high and low prices
-    upper_price = data['High'].max()
-    lower_price = data['Low'].min()
-
-    # Calculate the grid step
-    single_grid_width = (upper_price - lower_price) / grids
-
-    # Initialize UP and DOWN counters
-    up_counter = 0
-    down_counter = 0
-
-    last_close = 0
-
-    # Iterate through the data
-    for i in range(1, len(data)):
-        previous_close = data['Close'].iloc[i - 1]
-        current_close = data['Close'].iloc[i]
-
-        # Calculate previous and current grid levels
-        previous_grid_level = int((previous_close - lower_price) // single_grid_width)
-        current_grid_level = int((current_close - lower_price) // single_grid_width)
-
-        # Check if it crossed the grid upwards or downwards
-        if current_grid_level > previous_grid_level:
-            up_counter += 1
-        elif current_grid_level < previous_grid_level:
-            down_counter += 1
-
-        last_close = current_close
-
-    # Return the results
-    return up_counter, down_counter, single_grid_width, lower_price, upper_price, last_close

@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ST current file",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "/opt/homebrew/anaconda3/bin/streamlit",
+      "args": ["run", "${file}"]
+    },
+    {
+      "name": "Python debug current file",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
