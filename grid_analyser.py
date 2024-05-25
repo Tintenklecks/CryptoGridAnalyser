@@ -17,7 +17,7 @@ coins = [
 ]
 
 class CoinResult:
-    def __init__(self, ticker="n/a", fiat_wallet=0, coins=0.0, single_grid_width=0, lower_price=0, upper_price=0, current_price=0, bot_value=0):
+    def __init__(self, ticker="n/a", fiat_wallet=0, coins=0.0, single_grid_width=0, lower_price=0, upper_price=0, current_price=0, bot_value=0, buys = 0, sells = 0):
         self.ticker = ticker
         self.fiat_wallet = fiat_wallet
         self.coins = coins
@@ -26,6 +26,8 @@ class CoinResult:
         self.upper_price = upper_price
         self.current_price = current_price
         self.bot_value = bot_value
+        self.buys = buys
+        self.sells= sells
 
 
 
@@ -50,16 +52,15 @@ def analyze_crypto(symbol, period="1mo", interval="5m", grids=66, fiat_wallet=10
     prev_grid = None
     sell_orders = []
 
-    min = 0
+    buys = 0
+    sells = 0
+
     for close in data['Close']:
-        min += 1
         current_grid = int((upper_price - close) / single_grid_width)
-
-        # print(f"Price at {min}: {close}       Current grid: {current_grid}   Previous grid: {prev_grid}")
-
 
         if prev_grid is None or current_grid < prev_grid:
             # buy operation
+            buys = buys + 1
             amount = single_trade_amount / close
             # print(f"==> Buy {symbol} at price {close} (= {amount}) - Grid {current_grid}  (Sell in Grid {current_grid+1} for {close + single_trade_amount})  ")
             fiat_wallet -= single_trade_amount
@@ -73,43 +74,48 @@ def analyze_crypto(symbol, period="1mo", interval="5m", grids=66, fiat_wallet=10
         # print(f"Current sell orders count: {current_sell_orders.count}")
 
         for order in current_sell_orders:
+            sells = sells + 1
             fiat_wallet = fiat_wallet + order['amount'] * close
             coin_amount = coin_amount - order['amount']
             # print(f"<:::::::> Sell {symbol} at price {close} (= {order['amount']}) - Current {current_grid}  ")
             sell_orders.remove(order)
+
 
         prev_grid = current_grid
     
     last_price = data['Close'].iloc[-1]
     bot_value = fiat_wallet + coin_amount * last_price
 
-    return CoinResult(symbol, fiat_wallet, coin_amount, single_grid_width, lower_price, upper_price, last_price, bot_value)
+    return CoinResult(symbol, fiat_wallet, coin_amount, single_grid_width, lower_price, upper_price, last_price, bot_value, buys, sells)
 
 
-def xround(value):
+def xround(value, decimals = None, currency=""):
     """ Rounds the value and determins the amount of decimals according to the value. """
-    decimals = 10
-    value = abs(value)
-    if value >= 10000:
+    if decimals != None:
+        return f"{currency}{{:,.{decimals}f}}".format(value)
+    absvalue = abs(value)
+    if absvalue >= 10000:
         decimals = 0
-    elif value >= 1000:
+    elif absvalue >= 1000:
         decimals = 1
-    elif value >= 1:
+    elif absvalue >= 1:
         decimals = 2
-    elif value >= 0.1:
+    elif absvalue >= 0.1:
         decimals = 3
-    elif value >= 0.01:
+    elif absvalue >= 0.01:
         decimals = 4
-    elif value >= 0.001:
+    elif absvalue >= 0.001:
         decimals = 5
-    elif value >= 0.0001:
+    elif absvalue >= 0.0001:
         decimals = 6
     else:
         decimals = 9
-    return f"{{:,.{decimals}f}}".format(value)
+    return f"{currency}{{:,.{decimals}f}}".format(value)
 
+st.set_page_config(page_title="Crypto Grid Analyser", page_icon="💰", layout="centered", initial_sidebar_state="collapsed")
 st.title("Crypto Grid Analysis")
-
+st.markdown("**Crypto Grid Analysis** is a tool to help you determine the best grid for your crypto grid trading bot. Choose from the list of top 100 cryptocurrencies and see how much money you can make - backtested until today.")    
+st.markdown("---")
 NUMBER_OF_GRIDS = 50
 PERIOD = "5d"     # period: '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'
 INTERVAL = "1m"   # 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
@@ -119,14 +125,23 @@ INVESTMENT = 100
 
 col1, col2, col3 = st.columns([1, 1, 1])
 
-NUMBER_OF_GRIDS = col1.select_slider("Number of Grids", options=[10, 20, 30, 40, 50, 60, 70, 80, 90, 100], value=NUMBER_OF_GRIDS)
+investment_values = list(range(5, 50, 5)) + list(range(50, 100, 10)) + list(range(100, 1000, 50)) + list(range(1000, 10000, 100)) + list(range(10000, 100001, 1000))
+
+
+def money_formatter(number):
+    return f"{xround(number, 2)}" 
+
+
+NUMBER_OF_GRIDS = col1.select_slider("Number of Grids", options=range(5, 101, 5), value=NUMBER_OF_GRIDS)
 PERIOD = col2.select_slider("Data Period", options=['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'], value=PERIOD)
 INTERVAL = col3.select_slider("Data Interval", options=['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo'], value=INTERVAL)
-TOP_N = col1.select_slider("Check Top x Coins", options=range(1, 101), value=TOP_N)
+TOP_N = col1.select_slider("Check Top x Coins by market cap", options=range(1, 101), value=TOP_N)
 AMOUNT_OF_RESULTS = col2.select_slider("Show Top x Results", options=range(1, 101), value=AMOUNT_OF_RESULTS)
-INVESTMENT = col3.select_slider("Investment in USD", options=range(100, 10001, 100), value=INVESTMENT)
+INVESTMENT = col3.select_slider("Investment in USD", options=investment_values, format_func=money_formatter, value=INVESTMENT)
+ 
+AMOUNT_OF_RESULTS = min(AMOUNT_OF_RESULTS, TOP_N)
 
-
+st.markdown("---")
 
 
 
@@ -145,6 +160,7 @@ if st.button("Analyze"):
                 <td><b>Data Interval</b></td>
                 <td><b>Check Top x Coins</b></td>
                 <td><b>Show Top x Results</b></td>
+                <td><b>Investment</b></td>
                 <td><b>Investment/Grid</b></td>
             </tr>
             <tr>
@@ -153,7 +169,8 @@ if st.button("Analyze"):
                 <td>{INTERVAL}</td>
                 <td>{TOP_N}</td>
                 <td>{AMOUNT_OF_RESULTS}</td>
-                <td>{xround(INVESTMENT/NUMBER_OF_GRIDS)}</td>
+                <td>{xround(INVESTMENT, 2, '$')}</td>
+                <td>{xround(INVESTMENT/NUMBER_OF_GRIDS, 2, '$')}</td>
             </tr>
         </table>
     """, unsafe_allow_html=True)
@@ -164,7 +181,7 @@ if st.button("Analyze"):
 
     for index, coin in enumerate(coins[:TOP_N]):
         spinner_placeholder.markdown(f"Analyzing {index} of {TOP_N}: **{coin}**")
-        coin_result = analyze_crypto(coin, period=PERIOD, interval=INTERVAL,grids=NUMBER_OF_GRIDS)
+        coin_result = analyze_crypto(coin, period=PERIOD, interval=INTERVAL,grids=NUMBER_OF_GRIDS, fiat_wallet=INVESTMENT)
         results.append(coin_result)
 
     # sort the results array by coin_result.fiat_wallet
@@ -176,38 +193,31 @@ if st.button("Analyze"):
 
     cols = st.columns(8)
 
-    for index, headline in enumerate(("Coin", "Fiat", "Coins", "Grid Price", "min Price", "max Price", "Last Price", "Bot Value" )):
-        cols[index].markdown(f"**{headline}**")
+    st.markdown("", unsafe_allow_html=True) 
 
-    for result in sorted_results:
-        cols[0].markdown(f'<a href="https://www.tradingview.com/symbols/{result.ticker}USDT/" target="_blank">{result.ticker}</a>', unsafe_allow_html=True)
-        # cols[0].markdown(f"**{result.ticker}**")
-        cols[1].markdown(f"{xround(result.fiat_wallet)}")
-        cols[2].markdown(f"{xround(result.coins)}")
-        cols[3].markdown(f"${xround(result.single_grid_width)}") 
-        cols[4].markdown(f"{xround(result.lower_price)}")
-        cols[5].markdown(f"{xround(result.upper_price)}")
-        cols[6].markdown(f"{xround(result.current_price)}")
-        cols[7].markdown(f"${xround(result.bot_value)}")
+    html = "<table><tr>"
+    for index, headline in enumerate(("Coin", "Buys", "Sells", "Fiat", "Coins", "Grid Price", "min Price", "max Price", "Last Price", "Bot Value" )):
+        html += f"<th>{headline}</th>"
+    html += "</tr>"
+ 
+    for result in sorted_results:   
+        html += f""" 
+                    <tr>
+                    <td><a href='https://www.tradingview.com/symbols/{result.ticker}USDT/' target='_blank'>{result.ticker}</a></td>
+                    <td>{xround(result.buys, decimals=0)}</td>
+                    <td>{xround(result.sells, decimals=0)}</td>
+                    <td>{xround(result.fiat_wallet, 2, "$")}</td>
+                    <td>{xround(result.coins,currency=f"{result.ticker} ")}</td>
+                    <td>{xround(result.single_grid_width)}</td> 
+                    <td>{xround(result.lower_price)}</td>
+                    <td>{xround(result.upper_price)}</td>
+                    <td>{xround(result.current_price)}</td>
+                    <td>{xround(result.bot_value, decimals=2, currency="$")}</td>
+                    </tr>
+        """
+    html += "</table>"
+    html = html.replace("  ", " ").replace("\n", "")
 
-    exit()
 
-    cols = st.columns(7)
-    cols[0].markdown("**Coin**")
-    cols[1].markdown("**UP**")
-    cols[2].markdown("**DOWN**")
-    cols[3].markdown("**Step**")
-    cols[4].markdown("**Min**")
-    cols[5].markdown("**Max**") 
-    cols[6].markdown("**Last**")
-
-
-    for result in sorted_results[:AMOUNT_OF_RESULTS]: 
-        # loop through col and result 
-        cols[0].markdown(f'<a href="https://www.tradingview.com/symbols/{result[0]}USDT/">XXX https://www.tradingview.com/symbols/{result[0]}USDT/ {result[0]}</a>', unsafe_allow_html=True)
-        cols[1].write(f"{result[1]}")
-        cols[2].write(f"{result[2]}")
-        cols[3].write(f"{xround(result[3])}")
-        cols[4].write(f"{xround(result[4])}")
-        cols[5].write(f"{xround(result[5])}")
-        cols[6].write(f"{xround(result[6])}")
+    st.markdown(html, unsafe_allow_html=True)
+    
