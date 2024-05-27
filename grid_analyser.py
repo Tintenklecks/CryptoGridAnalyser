@@ -112,20 +112,27 @@ def xround(value, decimals = None, currency=""):
         decimals = 9
     return f"{currency}{{:,.{decimals}f}}".format(value)
 
+if 'html' not in st.session_state:
+    st.session_state['html'] = ''
+    st.session_state['overview'] = ''
+
+
 st.set_page_config(page_title="Crypto Grid Analyser", page_icon="💰", layout="centered", initial_sidebar_state="collapsed")
 st.title("Crypto Grid Analysis")
 st.markdown("**Crypto Grid Analysis** is a tool to help you determine the best grid for your crypto grid trading bot. Choose from the list of top 100 cryptocurrencies and see how much money you can make - backtested until today.")    
 st.markdown("---")
+
+
 NUMBER_OF_GRIDS = 50
-PERIOD = "5d"     # period: '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'
+PERIOD = "1d"     # period: '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'
 INTERVAL = "1m"   # 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
-TOP_N = 30
-AMOUNT_OF_RESULTS = 30
-INVESTMENT = 100
+TOP_N = 100
+AMOUNT_OF_RESULTS = 10
+INVESTMENT = 1000
 
 col1, col2, col3 = st.columns([1, 1, 1])
 
-investment_values = list(range(5, 50, 5)) + list(range(50, 100, 10)) + list(range(100, 1000, 50)) + list(range(1000, 10000, 100)) + list(range(10000, 100001, 1000))
+investment_values = list(range(10, 100, 10)) + list(range(100, 1000, 100)) + list(range(1000, 10000, 1000)) + list(range(10000, 100001, 10000))
 
 
 def money_formatter(number):
@@ -149,7 +156,7 @@ results = []
 
 if st.button("Analyze"):
 
-    st.markdown(f"""
+    st.session_state.overview = f"""
         <style>
             td {{ text-align: center; font-weight: heavy; color: #FF0000" }}
         </style>
@@ -173,7 +180,9 @@ if st.button("Analyze"):
                 <td>{xround(INVESTMENT/NUMBER_OF_GRIDS, 2, '$')}</td>
             </tr>
         </table>
-    """, unsafe_allow_html=True)
+    """
+
+    st.markdown(st.session_state.overview, unsafe_allow_html=True)
 
 
     spinner_placeholder = st.empty()
@@ -216,8 +225,8 @@ if st.button("Analyze"):
                     </tr>
         """
     html += "</table>"
-    html = html.replace("  ", " ").replace("\n", "")
+    st.session_state.html = html.replace("  ", " ").replace("\n", "")
 
 
-    st.markdown(html, unsafe_allow_html=True)
+    st.markdown(st.session_state.html, unsafe_allow_html=True)
     
