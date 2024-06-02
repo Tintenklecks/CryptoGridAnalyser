@@ -15,8 +15,7 @@ st.title("Crypto Grid Analysis")
 col1, col2 = st.columns([4, 1])
 col1.markdown("**Crypto Grid Analysis** is a tool to help you determine the best grid for your crypto grid trading bot. Choose from the list of top 100 cryptocurrencies and see how much money you can make - backtested until today.")
 analyse_button = col2.button("📈 Analyse", help="Click here to start the analysis")
-st.markdown("---")
-
+st.write("")
 
 NUMBER_OF_GRIDS = 30
 PERIOD = "1d"     # period: '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'
@@ -25,18 +24,18 @@ TOP_N = 100
 AMOUNT_OF_RESULTS = 10
 INVESTMENT = 1000
 
-col1, col2, col3 = st.columns([1, 1, 1])
+col1, col2, col3, col4, col5 = st.columns(5)
 
 INVESTMENT_VALUES = list(range(20, 100, 20)) + list(range(100, 1000, 100)) + list(range(1000, 10001, 1000)) 
 
 
 
-NUMBER_OF_GRIDS = col1.select_slider("Number of Grids", options=range(5, 101, 5), value=NUMBER_OF_GRIDS)
-PERIOD = col2.select_slider("Data Period", options=['1d', '5d', '1mo', '3mo', '6mo'], value=PERIOD) #  , '1y', '2y', '5y', '10y', 'ytd', 'max'], value=PERIOD)
+NUMBER_OF_GRIDS = col1.selectbox("Number of Grids", options=range(5, 101, 5))
+PERIOD = col2.selectbox("Data Period", options=['1d', '5d', '1mo', '3mo', '6mo']) #  , '1y', '2y', '5y', '10y', 'ytd', 'max'], value=PERIOD)
 # INTERVAL = col3.select_slider("Data Interval", options=['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo'], value=INTERVAL)
-TOP_N = col1.select_slider("Check Top x Coins by market cap", options=range(1, 101), value=TOP_N)
-AMOUNT_OF_RESULTS = col2.select_slider("Show Top x Results", options=range(1, 101), value=AMOUNT_OF_RESULTS)
-INVESTMENT = col3.select_slider("Investment in USD", options=INVESTMENT_VALUES, format_func=money_formatter, value=INVESTMENT)
+TOP_N = col3.selectbox("Top x by market cap", options=range(1, 101))
+AMOUNT_OF_RESULTS = col4.selectbox("Show Top x Results", options=range(1, 101))
+INVESTMENT = col5.selectbox("Investment in USD", options=INVESTMENT_VALUES, format_func=money_formatter,)
  
 AMOUNT_OF_RESULTS = min(AMOUNT_OF_RESULTS, TOP_N)
 
@@ -49,36 +48,7 @@ elif PERIOD == "3mo":
 elif PERIOD == "6mo":
     INTERVAL = "60m"
 
-st.session_state.overview = f"""
-    <style>
-        table {{ margin-top: 12px; }}
-        td {{ text-align: center; font-weight: heavy; color: #FF0000" }}
-    </style>
-    <table>
-        <tr>
-            <td><b>Grids</b></td>
-            <td><b>Period</b></td>
-            <td><b>Interval</b></td>
-            <td><b>Top x</b></td>
-            <td><b>No Results</b></td>
-            <td><b>Investment</b></td>
-            <td><b>Investment/Grid</b></td>
-        </tr>
-        <tr>
-            <td>{NUMBER_OF_GRIDS}</td>
-            <td>{PERIOD}</td>
-            <td>{INTERVAL}</td>
-            <td>{TOP_N}</td>
-            <td>{AMOUNT_OF_RESULTS}</td>
-            <td>{xround(INVESTMENT, 2, '$')}</td>
-            <td>{xround(INVESTMENT/NUMBER_OF_GRIDS, 2, '$')}</td>
-        </tr>
-    </table>
-"""
-
-st.markdown(st.session_state.overview, unsafe_allow_html=True)
-
-
+col2.write(f"Interval: {INTERVAL}")
 
 
 results = []
@@ -102,9 +72,11 @@ if analyse_button:
 
     spinner_placeholder.empty()  # Remove the spinner
 
-    spinner_placeholder.success(f'All {TOP_N} coins analysed!')
     if skipped != "":
-        st.warning(f"The following coins were skipped: {skipped. replace(' ', ', ')}")
+        skipped = f"The following coins were skipped: {skipped. replace(' ', ', ')}"
+
+
+    spinner_placeholder.success(f'All {TOP_N} coins analysed!. {skipped}')
 
     sorted_results = results #  sorted(results, key=lambda x: x[1], reverse=True)
     sorted_results = sorted(results, key=lambda x: x.bot_value, reverse=True)
@@ -120,7 +92,7 @@ if analyse_button:
  
     for result in sorted_results:   
         gain_loss= (result.bot_value - INVESTMENT) / INVESTMENT * 100
-        sign = "+" if gain_loss > 0 else "-"
+        sign = "+" if gain_loss > 0 else ""
         html += f""" 
                     <tr>
                     <td><a href='https://www.tradingview.com/symbols/{result.ticker}USDT/' target='_blank'>{result.ticker}</a></td>

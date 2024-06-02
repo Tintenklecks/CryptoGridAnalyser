@@ -16,6 +16,10 @@ coins = [
 ]
 
 
+
+
+
+
 class CoinResult:
     """ Structure for a single coin analysis result."""
     def __init__(self, ticker="n/a", marketcap_index=-1, fiat_wallet=0, coin_wallet=0.0, single_grid_width=0, lower_price=0, upper_price=0, current_price=0, bot_value=0, buys = 0, sells = 0):
@@ -89,7 +93,7 @@ def analyze_crypto(symbol, marketcap_index, period="1mo", interval="5m", grids=3
         bot_value = fiat_wallet + coin_amount * last_price
 
         return CoinResult(symbol, marketcap_index, fiat_wallet, coin_amount, single_grid_width, lower_price, upper_price, last_price, bot_value, buys, sells)
-    except Exception as e:
+    except ValueError as e:
         print(f"Error analyzing {symbol}: {e}")
         return None
 
