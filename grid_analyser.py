@@ -14,7 +14,6 @@ st.title("Crypto Grid Analysis")
 
 col1, col2 = st.columns([4, 1])
 col1.markdown("**Crypto Grid Analysis** is a tool to help you determine the best grid for your crypto grid trading bot. Choose from the list of top 100 cryptocurrencies and see how much money you can make - backtested until today.")
-analyse_button = col2.button("📈 Analyse", help="Click here to start the analysis")
 st.write("")
 
 NUMBER_OF_GRIDS = 30
@@ -30,12 +29,11 @@ INVESTMENT_VALUES = list(range(20, 100, 20)) + list(range(100, 1000, 100)) + lis
 
 
 
-NUMBER_OF_GRIDS = col1.selectbox("Number of Grids", options=range(5, 101, 5))
+NUMBER_OF_GRIDS = col1.selectbox("Number of Grids", options=range(5, 101, 5), index=6)
 PERIOD = col2.selectbox("Data Period", options=['1d', '5d', '1mo', '3mo', '6mo']) #  , '1y', '2y', '5y', '10y', 'ytd', 'max'], value=PERIOD)
-# INTERVAL = col3.select_slider("Data Interval", options=['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo'], value=INTERVAL)
-TOP_N = col3.selectbox("Top x by market cap", options=range(1, 101))
-AMOUNT_OF_RESULTS = col4.selectbox("Show Top x Results", options=range(1, 101))
-INVESTMENT = col5.selectbox("Investment in USD", options=INVESTMENT_VALUES, format_func=money_formatter,)
+TOP_N = col3.selectbox("Top x by market cap", options=range(1, 101), index=99)
+AMOUNT_OF_RESULTS = col4.selectbox("Show Top x Results", options=range(1, 101), index=9)
+INVESTMENT = col5.selectbox("Investment in USD", options=INVESTMENT_VALUES, format_func=money_formatter, index=13)
  
 AMOUNT_OF_RESULTS = min(AMOUNT_OF_RESULTS, TOP_N)
 
@@ -50,6 +48,8 @@ elif PERIOD == "6mo":
 
 col2.write(f"Interval: {INTERVAL}")
 
+st.write(" ")
+analyse_button = st.button("📈 Analyse", help="Click here to start the analysis")
 
 results = []
 
